@@ -1,23 +1,23 @@
 ﻿using System;
-using System.CodeDom;
 using System.Collections.Generic;
-using System.Linq;
+using System.Diagnostics;
 using Microsoft.Office.Core;
 using Excel = Microsoft.Office.Interop.Excel;
 
 namespace ExcelBubbleChartGenerator
 {
-    class Program
+    public static class ExcelBubbleChartGenerator
     {
-        private const double ChartWidth = 800;
         private const double DataLabelDistanceMargin = 5;
         private const double RotationIncrement = Math.PI / 8;
+
+        private static double _bubbleScaleFactor = 1;
 
         private static Excel.Application _excelApp;
         private static Excel.Workbook _excelWorkbook;
         private static Excel.Worksheet _excelWorksheet;
         private static Excel.Chart _bubbleChart;
-        private static Excel.SeriesCollection SeriesCollection => _bubbleChart.SeriesCollection();
+        private static Excel.SeriesCollection SeriesCollection => _bubbleChart?.SeriesCollection();
 
         private static readonly Dictionary<int, string> ProjectTypeNames = new Dictionary<int, string>
         {
@@ -33,9 +33,14 @@ namespace ExcelBubbleChartGenerator
             {3, (int) Excel.XlRgbColor.rgbRed}
         };
 
-        static void Main()
+        public static void SetExcelData()
         {
-            Console.WriteLine("Starting up...");
+
+        }
+
+        public static void GenerateBubbleChart(double chartWidth, double chartHeight, double bubbleScaleFactor, string fileName)
+        {
+            Debug.WriteLine("Starting up...");
             _excelApp = new Excel.Application();
             _excelWorkbook = _excelApp.Workbooks.Add(1);
             _excelWorksheet = (Excel.Worksheet)_excelWorkbook.Sheets[1];
@@ -98,46 +103,20 @@ namespace ExcelBubbleChartGenerator
                 _excelWorksheet.Cells[9, 5] = "1";
 
                 //Setup chart
-                Console.WriteLine("Setting up chart properties...");
-                var excelChartObjects = (Excel.ChartObjects) _excelWorksheet.ChartObjects();
-                var chartObject = excelChartObjects.Add(10, 80, ChartWidth, 500);
-                _bubbleChart = chartObject.Chart;
-
-                _bubbleChart.ChartType = Excel.XlChartType.xlBubble3DEffect;
-
-                var xAxis = (Excel.Axis)_bubbleChart.Axes(Excel.XlAxisType.xlCategory);
-                xAxis.HasTitle = true;
-                xAxis.AxisTitle.Caption = "Medeltimpris";
-                xAxis.HasMajorGridlines = true;
-                xAxis.MinimumScale = 0;
-                xAxis.MajorGridlines.Format.Line.ForeColor.RGB = (int) Excel.XlRgbColor.rgbGainsboro;
-
-                var yAxis = (Excel.Axis)_bubbleChart.Axes(Excel.XlAxisType.xlValue);
-                yAxis.HasTitle = true;
-                yAxis.AxisTitle.Caption = "TG2 Medel";
-                yAxis.HasMajorGridlines = true;
-                yAxis.TickLabels.NumberFormat = "0%";
-                yAxis.MajorGridlines.Format.Line.ForeColor.RGB = (int)Excel.XlRgbColor.rgbGainsboro;
-
-                Console.WriteLine("Adding data points...");
+                Debug.WriteLine("Setting up chart properties...");
+                SetupChartProperties(chartWidth, chartHeight, bubbleScaleFactor);
+                Debug.WriteLine("Adding data points...");
                 AddDataPoints();
-                Console.WriteLine("Adding legend...");
+                Debug.WriteLine("Adding legend...");
                 AddLegendAndClearDummySeriesNames();
-                Console.WriteLine("Placing data labels...");
+                Debug.WriteLine("Placing data labels...");
                 SpreadOutDataLabels();
 
-                Console.WriteLine("Exporting image...");
-                var imageFilePath = @"C:\Users\Andrea\Pictures\BubbleChart.png";
-                _bubbleChart.Export(imageFilePath, "PNG");
-                System.Diagnostics.Process.Start(imageFilePath);
-                Console.Write("Success! ");
+                Debug.WriteLine("Exporting image...");
+                _bubbleChart.Export(fileName, "PNG");
+                Process.Start(fileName);
 
-            }
-            catch (Exception exception)
-            {
-                Console.WriteLine(exception);
-                Console.WriteLine(exception.Message);
-                Console.Write("Failure... ");
+                Debug.Write("Success! ");
             }
             finally
             {
@@ -147,13 +126,35 @@ namespace ExcelBubbleChartGenerator
                 System.Runtime.InteropServices.Marshal.ReleaseComObject(_excelWorksheet);
                 System.Runtime.InteropServices.Marshal.ReleaseComObject(_excelWorkbook);
                 System.Runtime.InteropServices.Marshal.ReleaseComObject(_excelApp);
-
-                Console.WriteLine("Press any key to close.");
-                Console.ReadLine();
             }
         }
 
-        static void AddLegendAndClearDummySeriesNames()
+        private static void SetupChartProperties(double chartWidth, double chartHeight, double bubbleScaleFactor)
+        {
+            var excelChartObjects = (Excel.ChartObjects)_excelWorksheet.ChartObjects();
+            var chartObject = excelChartObjects.Add(10, 80, chartWidth, chartHeight);
+            _bubbleChart = chartObject.Chart;
+
+            _bubbleChart.ChartType = Excel.XlChartType.xlBubble3DEffect;
+
+            _bubbleScaleFactor = bubbleScaleFactor;
+
+            var xAxis = (Excel.Axis)_bubbleChart.Axes(Excel.XlAxisType.xlCategory);
+            xAxis.HasTitle = true;
+            xAxis.AxisTitle.Caption = "Medeltimpris";
+            xAxis.HasMajorGridlines = true;
+            xAxis.MinimumScale = 0;
+            xAxis.MajorGridlines.Format.Line.ForeColor.RGB = (int)Excel.XlRgbColor.rgbGainsboro;
+
+            var yAxis = (Excel.Axis)_bubbleChart.Axes(Excel.XlAxisType.xlValue);
+            yAxis.HasTitle = true;
+            yAxis.AxisTitle.Caption = "TG2 Medel";
+            yAxis.HasMajorGridlines = true;
+            yAxis.TickLabels.NumberFormat = "0%";
+            yAxis.MajorGridlines.Format.Line.ForeColor.RGB = (int)Excel.XlRgbColor.rgbGainsboro;
+        }
+
+        private static void AddLegendAndClearDummySeriesNames()
         {
             Excel.Legend legend = _bubbleChart.Legend;
 
@@ -172,7 +173,7 @@ namespace ExcelBubbleChartGenerator
             legend.Position = Excel.XlLegendPosition.xlLegendPositionBottom;
         }
 
-        static void AddDataPoints()
+        private static void AddDataPoints()
         {
             var dataMatrix = GetDataMatrixSortedByBubbleSize();
 
@@ -201,7 +202,7 @@ namespace ExcelBubbleChartGenerator
             }
         }
 
-        static void SpreadOutDataLabels()
+        private static void SpreadOutDataLabels()
         {
             var occupiedRectangles = new List<Rectangle>();
             var occupiedCircles = new List<Circle>();
@@ -215,7 +216,7 @@ namespace ExcelBubbleChartGenerator
                 {
                     var circle = new Circle(point.Left + point.Width / 2, point.Top + point.Height / 2, point.Width / 2, i);
                     occupiedCircles.Add(circle);
-                    Console.WriteLine("Added bubble " + point.DataLabel.Text + " at " + circle.CenterX + ", " + circle.CenterY + " with radius " + circle.Radius);
+                    Debug.WriteLine("Added bubble " + point.DataLabel.Text + " at " + circle.CenterX + ", " + circle.CenterY + " with radius " + circle.Radius);
 
                     i++;
                 }
@@ -232,7 +233,7 @@ namespace ExcelBubbleChartGenerator
                     var bubble = new Circle(point.Left + point.Width / 2, point.Top + point.Height / 2,
                         point.Width / 2, i);
 
-                    Console.WriteLine("Now finding placement for data label " + dataLabel.Text + "...");
+                    Debug.WriteLine("Now finding placement for data label " + dataLabel.Text + "...");
 
                     var unoccupiedRectangle = FindUnoccupiedRectangleNearCircle(dataLabel.Width, dataLabel.Height,
                         occupiedRectangles, occupiedCircles, bubble,
@@ -244,7 +245,7 @@ namespace ExcelBubbleChartGenerator
                     leaderLineAttachingPoints.Add(leaderLineAttachingCoordinates);
 
                     occupiedRectangles.Add(unoccupiedRectangle);
-                    Console.WriteLine("Added data label " + point.DataLabel.Text + " at " + unoccupiedRectangle.MinX + ", " + unoccupiedRectangle.MinY);
+                    Debug.WriteLine("Added data label " + point.DataLabel.Text + " at " + unoccupiedRectangle.MinX + ", " + unoccupiedRectangle.MinY);
 
                     i++;
                 }
@@ -253,7 +254,7 @@ namespace ExcelBubbleChartGenerator
             DrawLeaderLines(leaderLineAttachingPoints);
         }
 
-        static List<List<String>> GetDataMatrixSortedByBubbleSize()
+        private static List<List<String>> GetDataMatrixSortedByBubbleSize()
         {
             var dataMatrix = new List<List<string>>();
 
@@ -269,7 +270,7 @@ namespace ExcelBubbleChartGenerator
             return dataMatrix;
         }
 
-        static List<String> ConvertRowArrayToStringList(System.Array array)
+        private static List<String> ConvertRowArrayToStringList(System.Array array)
         {
             var stringList = new List<string>();
             for (int i = 1; i <= array.Length; i++)
@@ -284,7 +285,7 @@ namespace ExcelBubbleChartGenerator
             return stringList;
         }
 
-        static void DrawLeaderLines(List<double[]> leaderLineAttachingPoints)
+        private static void DrawLeaderLines(List<double[]> leaderLineAttachingPoints)
         {
             var i = 0;
             foreach (Excel.Series series in SeriesCollection)
@@ -309,24 +310,24 @@ namespace ExcelBubbleChartGenerator
                     var connector = _bubbleChart.Shapes.AddConnector(MsoConnectorType.msoConnectorStraight, bubbleX,
                         bubbleY, labelX, labelY);
 
-                    Console.WriteLine("Drawing leader line " + point.DataLabel.Text + " from " + bubbleX + ", " + bubbleY + " to " + labelX + ", " + labelY);
-                    Console.WriteLine("The bubble is now at: " + (point.Left + point.Width / 2) + ", " + (point.Top + point.Height / 2));
+                    Debug.WriteLine("Drawing leader line " + point.DataLabel.Text + " from " + bubbleX + ", " + bubbleY + " to " + labelX + ", " + labelY);
+                    Debug.WriteLine("The bubble is now at: " + (point.Left + point.Width / 2) + ", " + (point.Top + point.Height / 2));
                     connector.Line.ForeColor.RGB = (int) Excel.XlRgbColor.rgbBlack;
                     i++;
                 }
             }
         }
 
-        static double GetBubbleSizeFromRevenue(double revenue)
+        private static double GetBubbleSizeFromRevenue(double revenue)
         {
-            if (revenue <= 200) return 20;
-            if (revenue <= 400) return 50;
-            if (revenue <= 600) return 70;
-            if (revenue <= 800) return 80;
-            return 90;
+            if (revenue <= 200) return 20 *_bubbleScaleFactor;
+            if (revenue <= 400) return 50 * _bubbleScaleFactor;
+            if (revenue <= 600) return 70 * _bubbleScaleFactor;
+            if (revenue <= 800) return 80 * _bubbleScaleFactor;
+            return 90 * _bubbleScaleFactor;
         }
 
-        static Rectangle FindUnoccupiedRectangleNearCircle(double neededWidth, double neededHeight, List<Rectangle> occupiedRectangles, List<Circle> occupiedCircles, Circle bubblePoint, out double[] leaderLineAttachingCoordinates)
+        private static Rectangle FindUnoccupiedRectangleNearCircle(double neededWidth, double neededHeight, List<Rectangle> occupiedRectangles, List<Circle> occupiedCircles, Circle bubblePoint, out double[] leaderLineAttachingCoordinates)
         {
             var minX = bubblePoint.CenterX + bubblePoint.Radius + DataLabelDistanceMargin * 2;
             var minY = bubblePoint.CenterY - neededHeight / 2;
@@ -345,7 +346,7 @@ namespace ExcelBubbleChartGenerator
             {
                 if (rotationAngleIndex >= rotationAngles.Count)
                 {
-                    Console.WriteLine("Increasing distance from bubble by 5...");
+                    Debug.WriteLine("Increasing distance from bubble by 5...");
                     minX += 5;
                     unrotatedRectangle = new Rectangle(minX, minY, neededWidth, neededHeight);
                     rectangle = unrotatedRectangle;
@@ -353,16 +354,16 @@ namespace ExcelBubbleChartGenerator
                 }
                 else
                 {
-                    Console.WriteLine("Rotating by " + RotationIncrement + " radians...");
+                    Debug.WriteLine("Rotating by " + RotationIncrement + " radians...");
                     rectangle = GetRectangleRotatedAroundPoint(unrotatedRectangle, bubblePoint.CenterX, bubblePoint.CenterY, rotationAngles[rotationAngleIndex]);
                     leaderLineAttachingCoordinates = GetLeaderLinePointBetweenRectangleAndCircle(rectangle, bubblePoint, occupiedCircles);
                     if (leaderLineAttachingCoordinates == null && isAttemptingLeaderLinePlacement)
                     {
-                        Console.WriteLine("No leader line attachment possible at this angle. Continuing...");
+                        Debug.WriteLine("No leader line attachment possible at this angle. Continuing...");
                         rotationAngles.RemoveAt(rotationAngleIndex);
                         if (rotationAngles.Count == 0)
                         {
-                            Console.WriteLine("Impossible to place leader line at any angle. Giving up on it...");
+                            Debug.WriteLine("Impossible to place leader line at any angle. Giving up on it...");
                             rotationAngles = GetRotationAngles();
                             rotationAngleIndex = 0;
                             isAttemptingLeaderLinePlacement = false;
@@ -375,11 +376,11 @@ namespace ExcelBubbleChartGenerator
                 }
             }
 
-            Console.WriteLine("Data label placement found!");
+            Debug.WriteLine("Data label placement found!");
             return rectangle;
         }
 
-        static List<double> GetRotationAngles()
+        private static List<double> GetRotationAngles()
         {
             var rotationAngles = new List<double>();
 
@@ -391,7 +392,7 @@ namespace ExcelBubbleChartGenerator
             return rotationAngles;
         }
 
-        static bool DoesRectangleOverlapAnyOccupiedSpot(Rectangle rectangle, List<Rectangle> occupiedRectangles, List<Circle> occupiedCircles)
+        private static bool DoesRectangleOverlapAnyOccupiedSpot(Rectangle rectangle, List<Rectangle> occupiedRectangles, List<Circle> occupiedCircles)
         {
 
             foreach (var occupiedRectangle in occupiedRectangles)
@@ -426,13 +427,13 @@ namespace ExcelBubbleChartGenerator
             return false;
         }
 
-        static bool IsPointInsideCircle(double x, double y, Circle circle)
+        private static bool IsPointInsideCircle(double x, double y, Circle circle)
         {
             var distanceToCenter = Math.Sqrt(Math.Pow(x - circle.CenterX, 2) + Math.Pow(y - circle.CenterY, 2));
             return distanceToCenter <= circle.Radius;
         }
 
-        static Rectangle GetRectangleRotatedAroundPoint(Rectangle rectangle, double centerX, double centerY, double rotationAngle)
+        private static Rectangle GetRectangleRotatedAroundPoint(Rectangle rectangle, double centerX, double centerY, double rotationAngle)
         {
             var relativeX = rectangle.MinX - centerX;
             var relativeY = rectangle.MinY - centerY;
@@ -443,7 +444,7 @@ namespace ExcelBubbleChartGenerator
             return new Rectangle(centerX + newRelativeX, centerY + newRelativeY, rectangle.Width, rectangle.Height);
         }
 
-        static double[] GetLeaderLinePointBetweenRectangleAndCircle(Rectangle rectangle, Circle circle,
+        private static double[] GetLeaderLinePointBetweenRectangleAndCircle(Rectangle rectangle, Circle circle,
             List<Circle> occupiedCircles)
         {
             var x = circle.CenterX;
@@ -473,7 +474,7 @@ namespace ExcelBubbleChartGenerator
             return null;
         }
 
-        static double Clamp(double x, double min, double max)
+        private static double Clamp(double x, double min, double max)
         {
             return Math.Min(Math.Max(x, min), max);
         }
