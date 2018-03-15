@@ -191,7 +191,7 @@ namespace ExcelBubbleChartGenerator
 
             DrawBubbleLegend(chart);
 
-            legend.Top = chart.PlotArea.Height + BubbleLegendTop / 2;
+            legend.Top = chart.PlotArea.Height + BubbleLegendTop;
             legend.Left = BubbleLegendLeft;
         }
 
@@ -278,7 +278,7 @@ namespace ExcelBubbleChartGenerator
             var projectTypeString = stringList[4];
 
             return projectNameString != string.Empty &&
-                   Double.TryParse(hourRateString, out var hourRate) && hourRate > 0 &&
+                   Double.TryParse(hourRateString, out var _) &&
                    Double.TryParse(TG2String, out _) &&
                    Double.TryParse(revenueString, out var _) &&
                    IsValidProjectType(projectTypeString);
@@ -286,8 +286,8 @@ namespace ExcelBubbleChartGenerator
 
         private static bool IsValidProjectType(string projectType)
         {
-            return projectType == null || projectType.ToLower() == "lösning" || projectType.ToLower() == "resurs" ||
-                   projectType.ToLower() == "indirekt" || projectType == String.Empty;
+            return string.IsNullOrEmpty(projectType) || projectType.ToLower() == "lösning" || projectType.ToLower() == "resurs" ||
+                   projectType.ToLower() == "indirekt";
         }
 
         private static int GetProjectTypeIdFromProjectTypeString(string projectTypeString)
