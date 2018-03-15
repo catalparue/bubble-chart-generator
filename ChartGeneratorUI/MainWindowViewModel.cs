@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using GalaSoft.MvvmLight;
@@ -9,18 +10,22 @@ namespace ChartGeneratorUI
 {
     public class MainWindowViewModel : ViewModelBase
     {
-        private const double DefaultChartWidth = 800;
-        private const double DefaultChartHeight = 500;
+        private const double DefaultChartWidth = 1200;
+        private const double DefaultChartHeight = 700;
+        private const int WorksheetToFetchFrom = 2;
 
-        public double MinChartWidth { get; } = 400;
-        public double MinChartHeight { get; } = 400;
+        public double MinChartWidth { get; } = 1;
+        public double MinChartHeight { get; } = 1;
 
         private bool _isAppEnabled = true;
-        private string _stringMessage;
+        private string _sourceFilePath;
+        private string _statusMessage;
         private double _chartWidth = DefaultChartWidth;
         private double _chartHeight = DefaultChartHeight;
 
         public ICommand GenerateBubbleChartCommand { get; set; }
+
+        public ICommand SelectSourceFileCommand { get; set; }
 
         public bool IsAppEnabled
         {
@@ -28,10 +33,16 @@ namespace ChartGeneratorUI
             set => Set(ref _isAppEnabled, value);
         }
 
+        public string SourceFilePath
+        {
+            get => _sourceFilePath;
+            set => Set(ref _sourceFilePath, value);
+        }
+
         public string StatusMessage
         {
-            get => _stringMessage;
-            private set => Set(ref _stringMessage, value);
+            get => _statusMessage;
+            private set => Set(ref _statusMessage, value);
         }
 
         public double ChartWidth
@@ -49,10 +60,31 @@ namespace ChartGeneratorUI
         public MainWindowViewModel()
         {
             GenerateBubbleChartCommand = new RelayCommand(GenerateChart, IsAppEnabled);
+            SelectSourceFileCommand = new RelayCommand(SelectSourceFile, IsAppEnabled);
+        }
+
+        public void SelectSourceFile()
+        {
+            var openFileDialog = new OpenFileDialog
+            {
+                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                Filter = "Excel files (*.xls, *.xlsx)|*.xls;*.xlsx",
+                RestoreDirectory = true
+            };
+
+            if (openFileDialog.ShowDialog() == true) SourceFilePath = openFileDialog.FileName;
         }
 
         public async void GenerateChart()
         {
+            if (!File.Exists(SourceFilePath))
+            {
+                StatusMessage = "Kunde inte hitta den angivna källfilen!";
+                return;
+            }
+
+            StatusMessage = string.Empty;
+
             var saveFileDialog = new SaveFileDialog
             {
                 OverwritePrompt = true,
@@ -67,8 +99,13 @@ namespace ChartGeneratorUI
             StatusMessage = "Arbetar";
             try
             {
-                await Task.Run(() => ExcelBubbleChartGenerator.ExcelBubbleChartGenerator.GenerateBubbleChart(ChartWidth, ChartHeight, GetChartScaleFactor(),
-                    saveFileDialog.FileName));
+                await Task.Run(() => ExcelBubbleChartGenerator.ExcelBubbleChartGenerator.GenerateBubbleChart(
+                    ChartWidth,
+                    ChartHeight,
+                    GetChartScaleFactor(),
+                    SourceFilePath,
+                    saveFileDialog.FileName,
+                    WorksheetToFetchFrom));
                 StatusMessage = "Bilden har sparats till:\n" + saveFileDialog.FileName;
             }
             catch (Exception exception)
@@ -83,8 +120,8 @@ namespace ChartGeneratorUI
 
         private double GetChartScaleFactor()
         {
-            var xFactor = ChartWidth / DefaultChartWidth;
-            var yFactor = ChartHeight / DefaultChartWidth;
+            var xFactor = DefaultChartWidth / ChartWidth;
+            var yFactor = DefaultChartHeight / ChartHeight;
             return xFactor * yFactor;
         }
     }

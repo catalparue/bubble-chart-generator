@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using Microsoft.Office.Core;
 using Excel = Microsoft.Office.Interop.Excel;
 
@@ -11,13 +12,20 @@ namespace ExcelBubbleChartGenerator
         private const double DataLabelDistanceMargin = 5;
         private const double RotationIncrement = Math.PI / 8;
 
-        private static double _bubbleScaleFactor = 1;
+        private const double DefaultBubbleScale = 1;
 
-        private static Excel.Application _excelApp;
-        private static Excel.Workbook _excelWorkbook;
-        private static Excel.Worksheet _excelWorksheet;
-        private static Excel.Chart _bubbleChart;
-        private static Excel.SeriesCollection SeriesCollection => _bubbleChart?.SeriesCollection();
+        private const double HeuristicExtraWidth = 267;
+        private const double HeuristicExtraHeight = 168;
+
+        private const float DotWidth = 2;
+        private const double LeaderLineAttachingPointMargin = 5;
+
+        private const float BubbleLegendLabelMargin = 5;
+        private const float BubbleLegendLeft = 20;
+        private const float BubbleLegendTop = 50;
+        private const float RevenueTitleLength = 100;
+        private const float RevenueTextLabelLength = 55;
+        private const float RevenueTextLabelHeight = 20;
 
         private static readonly Dictionary<int, string> ProjectTypeNames = new Dictionary<int, string>
         {
@@ -28,166 +36,113 @@ namespace ExcelBubbleChartGenerator
 
         private static readonly Dictionary<int, int> ProjectTypeColors = new Dictionary<int, int>
         {
-            {1, (int) Excel.XlRgbColor.rgbTan},
-            {2, (int) Excel.XlRgbColor.rgbLimeGreen},
+            {1, (int) Excel.XlRgbColor.rgbBisque},
+            {2, (int) Excel.XlRgbColor.rgbYellowGreen},
             {3, (int) Excel.XlRgbColor.rgbRed}
         };
 
-        public static void SetExcelData()
-        {
-
-        }
-
-        public static void GenerateBubbleChart(double chartWidth, double chartHeight, double bubbleScaleFactor, string fileName)
+        public static void GenerateBubbleChart(double chartWidth, double chartHeight, double bubbleScaleFactor, string dataFilePath, string outputFilePath, int worksheetToOpen)
         {
             Debug.WriteLine("Starting up...");
-            _excelApp = new Excel.Application();
-            _excelWorkbook = _excelApp.Workbooks.Add(1);
-            _excelWorksheet = (Excel.Worksheet)_excelWorkbook.Sheets[1];
+
+            Excel.Application excelApp = null;
+            Excel.Workbook excelWorkbook = null;
+            Excel.Worksheet excelWorksheet = null;
+
+            Excel.Workbook sourceDataWorkbook = null;
 
             try
             {
-                // Add data
-                _excelWorksheet.Cells[1, 1] = "Attentec"; // Projektnamn
-                _excelWorksheet.Cells[1, 2] = "600"; // Medeltimpris
-                _excelWorksheet.Cells[1, 3] = "20%"; // TG2 Medel
-                _excelWorksheet.Cells[1, 4] = "150"; // Omsättning kategori
-                _excelWorksheet.Cells[1, 5] = "1"; // Lösning/konsulttjänst/indirekt kategori
+                excelApp = new Excel.Application();
+                excelWorkbook = excelApp.Workbooks.Add(1);
+                excelWorksheet = (Excel.Worksheet) excelWorkbook.Sheets[1];
 
-                _excelWorksheet.Cells[2, 1] = "Umbrella Corporation";
-                _excelWorksheet.Cells[2, 2] = "800";
-                _excelWorksheet.Cells[2, 3] = "11%";
-                _excelWorksheet.Cells[2, 4] = "300";
-                _excelWorksheet.Cells[2, 5] = "2";
+                sourceDataWorkbook = excelApp.Workbooks.Open(dataFilePath);
 
-                _excelWorksheet.Cells[3, 1] = "LexCorp";
-                _excelWorksheet.Cells[3, 2] = "1000";
-                _excelWorksheet.Cells[3, 3] = "6%";
-                _excelWorksheet.Cells[3, 4] = "900";
-                _excelWorksheet.Cells[3, 5] = "3";
-
-                _excelWorksheet.Cells[4, 1] = "Aperture Science";
-                _excelWorksheet.Cells[4, 2] = "1300";
-                _excelWorksheet.Cells[4, 3] = "12%";
-                _excelWorksheet.Cells[4, 4] = "805";
-                _excelWorksheet.Cells[4, 5] = "2";
-
-                _excelWorksheet.Cells[5, 1] = "Cyberdyne Systems";
-                _excelWorksheet.Cells[5, 2] = "550";
-                _excelWorksheet.Cells[5, 3] = "10%";
-                _excelWorksheet.Cells[5, 4] = "50";
-                _excelWorksheet.Cells[5, 5] = "2";
-
-                _excelWorksheet.Cells[6, 1] = "Weyland-Yutani";
-                _excelWorksheet.Cells[6, 2] = "807";
-                _excelWorksheet.Cells[6, 3] = "11%";
-                _excelWorksheet.Cells[6, 4] = "120";
-                _excelWorksheet.Cells[6, 5] = "1";
-
-                _excelWorksheet.Cells[7, 1] = "Wayne Enterprises";
-                _excelWorksheet.Cells[7, 2] = "780";
-                _excelWorksheet.Cells[7, 3] = "11%";
-                _excelWorksheet.Cells[7, 4] = "1000";
-                _excelWorksheet.Cells[7, 5] = "3";
-
-                _excelWorksheet.Cells[8, 1] = "Soylent";
-                _excelWorksheet.Cells[8, 2] = "650";
-                _excelWorksheet.Cells[8, 3] = "14%";
-                _excelWorksheet.Cells[8, 4] = "700";
-                _excelWorksheet.Cells[8, 5] = "1";
-
-                _excelWorksheet.Cells[9, 1] = "Tyrell Corporation";
-                _excelWorksheet.Cells[9, 2] = "150";
-                _excelWorksheet.Cells[9, 3] = "-5%";
-                _excelWorksheet.Cells[9, 4] = "50";
-                _excelWorksheet.Cells[9, 5] = "1";
-
-                //Setup chart
                 Debug.WriteLine("Setting up chart properties...");
-                SetupChartProperties(chartWidth, chartHeight, bubbleScaleFactor);
+                var bubbleChart = CreateNewBubbleChart(excelWorksheet, chartWidth, chartHeight, bubbleScaleFactor);
                 Debug.WriteLine("Adding data points...");
-                AddDataPoints();
+                AddDataPoints(bubbleChart, sourceDataWorkbook.Sheets[worksheetToOpen]);
                 Debug.WriteLine("Adding legend...");
-                AddLegendAndClearDummySeriesNames();
+                AddLegendAndClearDummySeriesNames(bubbleChart);
                 Debug.WriteLine("Placing data labels...");
-                SpreadOutDataLabels();
-
+                SpreadOutDataLabels(bubbleChart);
                 Debug.WriteLine("Exporting image...");
-                _bubbleChart.Export(fileName, "PNG");
-                Process.Start(fileName);
+                bubbleChart.Export(outputFilePath, "PNG");
+                Process.Start(outputFilePath);
 
                 Debug.Write("Success! ");
             }
             finally
             {
-                _excelWorkbook.Saved = true; // A lie! This is to avoid prompting the user to save before closing.
-                _excelWorkbook.Close();
-                _excelApp.Quit();
-                System.Runtime.InteropServices.Marshal.ReleaseComObject(_excelWorksheet);
-                System.Runtime.InteropServices.Marshal.ReleaseComObject(_excelWorkbook);
-                System.Runtime.InteropServices.Marshal.ReleaseComObject(_excelApp);
+                if (excelWorkbook != null)
+                {
+                    excelWorkbook.Saved = true; // Avoid prompting user to save
+                    excelWorkbook.Close();
+                }
+
+                if (sourceDataWorkbook != null)
+                {
+                    sourceDataWorkbook.Saved = true; // Avoid prompting user to save
+                    sourceDataWorkbook.Close();
+                }
+
+                excelApp?.Quit();
+                if (excelWorksheet != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(excelWorksheet);
+                if (excelWorkbook != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(excelWorkbook);
+                if (sourceDataWorkbook != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(sourceDataWorkbook);
+                if (excelApp != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(excelApp);
             }
         }
 
-        private static void SetupChartProperties(double chartWidth, double chartHeight, double bubbleScaleFactor)
+        private static Excel.Chart CreateNewBubbleChart(Excel.Worksheet excelWorksheet, double chartWidth, double chartHeight, double bubbleScaleFactor)
         {
-            var excelChartObjects = (Excel.ChartObjects)_excelWorksheet.ChartObjects();
-            var chartObject = excelChartObjects.Add(10, 80, chartWidth, chartHeight);
-            _bubbleChart = chartObject.Chart;
+            var excelChartObjects = (Excel.ChartObjects)excelWorksheet.ChartObjects();
+            var chartObject = excelChartObjects.Add(10, 80, chartWidth - HeuristicExtraWidth, chartHeight - HeuristicExtraHeight);
+            var bubbleChart = chartObject.Chart;
 
-            _bubbleChart.ChartType = Excel.XlChartType.xlBubble3DEffect;
+            bubbleChart.ChartType = Excel.XlChartType.xlBubble3DEffect;
 
-            _bubbleScaleFactor = bubbleScaleFactor;
+            bubbleChart.ChartGroups(1).BubbleScale = Clamp(100 * bubbleScaleFactor * DefaultBubbleScale, 0, 300);
 
-            var xAxis = (Excel.Axis)_bubbleChart.Axes(Excel.XlAxisType.xlCategory);
+            var xAxis = (Excel.Axis) bubbleChart.Axes(Excel.XlAxisType.xlCategory);
             xAxis.HasTitle = true;
             xAxis.AxisTitle.Caption = "Medeltimpris";
             xAxis.HasMajorGridlines = true;
-            xAxis.MinimumScale = 0;
             xAxis.MajorGridlines.Format.Line.ForeColor.RGB = (int)Excel.XlRgbColor.rgbGainsboro;
 
-            var yAxis = (Excel.Axis)_bubbleChart.Axes(Excel.XlAxisType.xlValue);
+            var yAxis = (Excel.Axis) bubbleChart.Axes(Excel.XlAxisType.xlValue);
             yAxis.HasTitle = true;
             yAxis.AxisTitle.Caption = "TG2 Medel";
             yAxis.HasMajorGridlines = true;
             yAxis.TickLabels.NumberFormat = "0%";
             yAxis.MajorGridlines.Format.Line.ForeColor.RGB = (int)Excel.XlRgbColor.rgbGainsboro;
+
+            return bubbleChart;
         }
 
-        private static void AddLegendAndClearDummySeriesNames()
+        private static void AddDataPoints(Excel.Chart bubbleChart, Excel.Worksheet sourceWorksheet)
         {
-            Excel.Legend legend = _bubbleChart.Legend;
+            var dataMatrix = GetDataMatrixFromExcelWorksheet(sourceWorksheet);
 
-            for (var i = 1; i <= ProjectTypeNames.Count; i++)
-            {
-                var series = SeriesCollection.NewSeries();
-                series.Name = ProjectTypeNames[i];
-                series.Format.Fill.ForeColor.RGB = ProjectTypeColors[i];
-            }
+            var seriesCollection = bubbleChart.SeriesCollection();
 
-            while (legend.LegendEntries().Count > 3)
-            {
-                legend.LegendEntries(1).Delete();
-            }
-
-            legend.Position = Excel.XlLegendPosition.xlLegendPositionBottom;
-        }
-
-        private static void AddDataPoints()
-        {
-            var dataMatrix = GetDataMatrixSortedByBubbleSize();
+            var minXValue = double.MaxValue;
+            var minYValue = double.MaxValue;
+            var maxXValue = double.MinValue;
+            var maxYValue = double.MinValue;
 
             foreach (var row in dataMatrix)
             {
-                var series = SeriesCollection.NewSeries();
+                var series = seriesCollection.NewSeries();
                 series.Has3DEffect = true;
                 series.HasDataLabels = true;
 
                 var dataLabelText = row[0];
                 var xValue = Convert.ToDouble(row[1]);
                 var yValue = Convert.ToDouble(row[2]);
-                var revenue = Convert.ToDouble(row[3]);
-                var projectTypeId = Convert.ToInt32(row[4]);
+                var revenue = Convert.ToDouble(row[3]) / 1000;
+                var projectTypeId = GetProjectTypeIdFromProjectTypeString(row[4]);
 
                 var bubbleSize = GetBubbleSizeFromRevenue(revenue);
 
@@ -199,18 +154,58 @@ namespace ExcelBubbleChartGenerator
 
                 Excel.DataLabel dataLabel = series.DataLabels(1);
                 dataLabel.Text = dataLabelText;
+
+                if (xValue < minXValue) minXValue = xValue;
+                if (yValue < minYValue) minYValue = yValue;
+                if (xValue > maxXValue) maxXValue = xValue;
+                if (yValue > maxYValue) maxYValue = yValue;
             }
+
+            var xAxis = (Excel.Axis)bubbleChart.Axes(Excel.XlAxisType.xlCategory);
+            xAxis.MinimumScale = (Math.Floor(minXValue / 100) - 1) * 100;
+            xAxis.MaximumScale = (Math.Ceiling(maxXValue / 100) + 1) * 100;
+            var yAxis = (Excel.Axis)bubbleChart.Axes(Excel.XlAxisType.xlValue);
+            yAxis.MinimumScale = (Math.Floor(minYValue * 10) - 1) / 10;
+            yAxis.MaximumScale = (Math.Ceiling(maxYValue * 10) + 1) / 10;
         }
 
-        private static void SpreadOutDataLabels()
+        private static void AddLegendAndClearDummySeriesNames(Excel.Chart chart)
+        {
+            var legend = chart.Legend;
+
+            var seriesCollection = chart.SeriesCollection();
+
+            for (var i = 1; i <= ProjectTypeNames.Count; i++)
+            {
+                var series = seriesCollection.NewSeries();
+                series.Name = ProjectTypeNames[i];
+                series.Format.Fill.ForeColor.RGB = ProjectTypeColors[i];
+            }
+
+            while (legend.LegendEntries().Count > 3)
+            {
+                legend.LegendEntries(1).Delete();
+            }
+
+            legend.Position = Excel.XlLegendPosition.xlLegendPositionTop;
+
+            DrawBubbleLegend(chart);
+
+            legend.Top = chart.PlotArea.Height + BubbleLegendTop / 2;
+            legend.Left = BubbleLegendLeft;
+        }
+
+        private static void SpreadOutDataLabels(Excel.Chart chart)
         {
             var occupiedRectangles = new List<Rectangle>();
             var occupiedCircles = new List<Circle>();
             var leaderLineAttachingPoints = new List<double[]>();
 
+            var seriesCollection = chart.SeriesCollection();
+
             // First populated the list with all data bubbles...
             double i = 0;
-            foreach (Excel.Series series in SeriesCollection)
+            foreach (Excel.Series series in seriesCollection)
             {
                 foreach (Excel.Point point in series.Points())
                 {
@@ -222,9 +217,13 @@ namespace ExcelBubbleChartGenerator
                 }
             }
 
+            // ... and denote the X-axis as an occupied spot...
+            var xAxis = (Excel.Axis)chart.Axes(Excel.XlAxisType.xlCategory);
+            occupiedRectangles.Add(new Rectangle(xAxis.Left, xAxis.Top, xAxis.Width, xAxis.Height));
+
             // ... then make another pass, this time placing the data labels
             i = 0;
-            foreach (Excel.Series series in SeriesCollection)
+            foreach (Excel.Series series in seriesCollection)
             {
                 foreach (Excel.Point point in series.Points())
                 {
@@ -251,17 +250,17 @@ namespace ExcelBubbleChartGenerator
                 }
             }
 
-            DrawLeaderLines(leaderLineAttachingPoints);
+            DrawLeaderLines(chart, leaderLineAttachingPoints);
         }
 
-        private static List<List<String>> GetDataMatrixSortedByBubbleSize()
+        private static List<List<string>> GetDataMatrixFromExcelWorksheet(Excel.Worksheet worksheet)
         {
             var dataMatrix = new List<List<string>>();
 
-            foreach (Excel.Range row in _excelWorksheet.UsedRange.Rows)
+            foreach (Excel.Range row in worksheet.UsedRange.Rows)
             {
                 var stringList = ConvertRowArrayToStringList(row.Value2);
-                if (stringList == null) continue;
+                if (!IsStringListValidData(stringList)) continue;
                 dataMatrix.Add(stringList);
             }
 
@@ -270,61 +269,55 @@ namespace ExcelBubbleChartGenerator
             return dataMatrix;
         }
 
-        private static List<String> ConvertRowArrayToStringList(System.Array array)
+        private static bool IsStringListValidData(List<string> stringList)
+        {
+            var projectNameString = stringList[0];
+            var hourRateString = stringList[1];
+            var TG2String = stringList[2];
+            var revenueString = stringList[3];
+            var projectTypeString = stringList[4];
+
+            return projectNameString != string.Empty &&
+                   Double.TryParse(hourRateString, out var hourRate) && hourRate > 0 &&
+                   Double.TryParse(TG2String, out _) &&
+                   Double.TryParse(revenueString, out var _) &&
+                   IsValidProjectType(projectTypeString);
+        }
+
+        private static bool IsValidProjectType(string projectType)
+        {
+            return projectType == null || projectType.ToLower() == "lösning" || projectType.ToLower() == "resurs" ||
+                   projectType.ToLower() == "indirekt" || projectType == String.Empty;
+        }
+
+        private static int GetProjectTypeIdFromProjectTypeString(string projectTypeString)
+        {
+            switch (projectTypeString?.ToLower())
+            {
+                default:
+                case "lösning":
+                    return 1;
+                case "resurs":
+                    return 2;
+                case "indirekt":
+                    return 3;
+            }
+        }
+
+        private static List<String> ConvertRowArrayToStringList(Array array)
         {
             var stringList = new List<string>();
-            for (int i = 1; i <= array.Length; i++)
+            for (var i = 1; i <= array.Length; i++)
             {
-                if (array.GetValue(1, i) == null)
-                {
-                    return null; //If any cell is empty, ignore this row
-                }
-                stringList.Add(array.GetValue(1, i).ToString());
+                stringList.Add(array.GetValue(1, i)?.ToString());
             }
 
             return stringList;
         }
 
-        private static void DrawLeaderLines(List<double[]> leaderLineAttachingPoints)
-        {
-            var i = 0;
-            foreach (Excel.Series series in SeriesCollection)
-            {
-                foreach (Excel.Point point in series.Points())
-                {
-                    float bubbleX;
-                    float bubbleY;
-                    if (leaderLineAttachingPoints[i] != null)
-                    {
-                        bubbleX = (float) leaderLineAttachingPoints[i][0];
-                        bubbleY = (float) leaderLineAttachingPoints[i][1];
-                    }
-                    else
-                    {
-                        bubbleX = (float) (point.Left + point.Width / 2);
-                        bubbleY = (float) (point.Top + point.Height / 2);
-                    }
-
-                    var labelX = (float) point.DataLabel.Left;
-                    var labelY = (float) (point.DataLabel.Top + point.DataLabel.Height / 2);
-                    var connector = _bubbleChart.Shapes.AddConnector(MsoConnectorType.msoConnectorStraight, bubbleX,
-                        bubbleY, labelX, labelY);
-
-                    Debug.WriteLine("Drawing leader line " + point.DataLabel.Text + " from " + bubbleX + ", " + bubbleY + " to " + labelX + ", " + labelY);
-                    Debug.WriteLine("The bubble is now at: " + (point.Left + point.Width / 2) + ", " + (point.Top + point.Height / 2));
-                    connector.Line.ForeColor.RGB = (int) Excel.XlRgbColor.rgbBlack;
-                    i++;
-                }
-            }
-        }
-
         private static double GetBubbleSizeFromRevenue(double revenue)
         {
-            if (revenue <= 200) return 20 *_bubbleScaleFactor;
-            if (revenue <= 400) return 50 * _bubbleScaleFactor;
-            if (revenue <= 600) return 70 * _bubbleScaleFactor;
-            if (revenue <= 800) return 80 * _bubbleScaleFactor;
-            return 90 * _bubbleScaleFactor;
+            return Math.Max(revenue / 100, 0);
         }
 
         private static Rectangle FindUnoccupiedRectangleNearCircle(double neededWidth, double neededHeight, List<Rectangle> occupiedRectangles, List<Circle> occupiedCircles, Circle bubblePoint, out double[] leaderLineAttachingCoordinates)
@@ -346,7 +339,6 @@ namespace ExcelBubbleChartGenerator
             {
                 if (rotationAngleIndex >= rotationAngles.Count)
                 {
-                    Debug.WriteLine("Increasing distance from bubble by 5...");
                     minX += 5;
                     unrotatedRectangle = new Rectangle(minX, minY, neededWidth, neededHeight);
                     rectangle = unrotatedRectangle;
@@ -354,12 +346,10 @@ namespace ExcelBubbleChartGenerator
                 }
                 else
                 {
-                    Debug.WriteLine("Rotating by " + RotationIncrement + " radians...");
                     rectangle = GetRectangleRotatedAroundPoint(unrotatedRectangle, bubblePoint.CenterX, bubblePoint.CenterY, rotationAngles[rotationAngleIndex]);
                     leaderLineAttachingCoordinates = GetLeaderLinePointBetweenRectangleAndCircle(rectangle, bubblePoint, occupiedCircles);
                     if (leaderLineAttachingCoordinates == null && isAttemptingLeaderLinePlacement)
                     {
-                        Debug.WriteLine("No leader line attachment possible at this angle. Continuing...");
                         rotationAngles.RemoveAt(rotationAngleIndex);
                         if (rotationAngles.Count == 0)
                         {
@@ -377,6 +367,12 @@ namespace ExcelBubbleChartGenerator
             }
 
             Debug.WriteLine("Data label placement found!");
+
+            if (leaderLineAttachingCoordinates != null)
+            {
+                occupiedCircles.Add(new Circle(leaderLineAttachingCoordinates[0], leaderLineAttachingCoordinates[1], LeaderLineAttachingPointMargin, double.MaxValue));
+            }
+
             return rectangle;
         }
 
@@ -464,7 +460,15 @@ namespace ExcelBubbleChartGenerator
 
                 if (numberOfCirclesOverlappingPoint == 0)
                 {
-                    return new[] {x, y};
+                    var closestXToCenter = x;
+                    var closestYToCenter = y;
+                    while (IsPointInsideCircle(x, y, circle))
+                    {
+                        x -= directionX;
+                        y -= directionY;
+                    }
+
+                    return new[] {(x + closestXToCenter) / 2, (y + closestYToCenter) / 2};
                 }
 
                 x -= directionX;
@@ -472,6 +476,138 @@ namespace ExcelBubbleChartGenerator
             }
 
             return null;
+        }
+
+        private static void DrawLeaderLines(Excel.Chart chart, List<double[]> leaderLineBubbleAttachingPoint)
+        {
+            var i = 0;
+            var seriesCollection = chart.SeriesCollection();
+            foreach (Excel.Series series in seriesCollection)
+            {
+                foreach (Excel.Point point in series.Points())
+                {
+                    float bubbleX;
+                    float bubbleY;
+                    if (leaderLineBubbleAttachingPoint[i] != null)
+                    {
+                        bubbleX = (float)leaderLineBubbleAttachingPoint[i][0];
+                        bubbleY = (float)leaderLineBubbleAttachingPoint[i][1];
+                    }
+                    else
+                    {
+                        bubbleX = (float)(point.Left + point.Width / 2);
+                        bubbleY = (float)(point.Top + point.Height / 2);
+                    }
+
+                    var leaderLineLabelAttachingPoint = GetLeaderLineDataLabelAttachingPoint(point.DataLabel, bubbleX, bubbleY);
+
+                    var labelX = (float) leaderLineLabelAttachingPoint[0];
+                    var labelY = (float) leaderLineLabelAttachingPoint[1];
+
+                    var connector = chart.Shapes.AddConnector(MsoConnectorType.msoConnectorStraight, bubbleX,
+                        bubbleY, labelX, labelY);
+                    connector.Line.ForeColor.RGB = (int)Excel.XlRgbColor.rgbBlack;
+
+                    var dotAtLabel = chart.Shapes.AddShape(MsoAutoShapeType.msoShapeOval,
+                        labelX - DotWidth / 2,
+                        labelY - DotWidth / 2,
+                        DotWidth,
+                        DotWidth);
+                    dotAtLabel.Fill.ForeColor.RGB = (int)Excel.XlRgbColor.rgbBlack;
+
+                    var dotAtBubble = chart.Shapes.AddShape(MsoAutoShapeType.msoShapeOval,
+                        bubbleX - DotWidth / 2,
+                        bubbleY - DotWidth / 2,
+                        DotWidth,
+                        DotWidth);
+                    dotAtBubble.Fill.ForeColor.RGB = (int)Excel.XlRgbColor.rgbBlack;
+
+                    Debug.WriteLine("Drawing leader line " + point.DataLabel.Text + " from " + bubbleX + ", " + bubbleY + " to " + labelX + ", " + labelY);
+                    i++;
+                }
+            }
+        }
+
+        private static double[] GetLeaderLineDataLabelAttachingPoint(Excel.DataLabel dataLabel, double bubbleX, double bubbleY)
+        {
+            var labelAttachingX = Clamp(bubbleX, dataLabel.Left, dataLabel.Left + dataLabel.Width);
+            var labelAttachingY = Clamp(bubbleY, dataLabel.Top, dataLabel.Top + dataLabel.Height);
+
+            return new[] {labelAttachingX, labelAttachingY};
+        }
+
+        private static void DrawBubbleLegend(Excel.Chart chart)
+        {
+            var revenues = new double[] {200, 400, 600, 800, 1000};
+            const double revenueIncrement = 200;
+            var zeroArray = revenues.Select(x => 0.0).ToArray();
+            var bubbleSizes = revenues.Select(x => GetBubbleSizeFromRevenue(x - revenueIncrement / 2)).ToArray();
+
+            Excel.Series dummyBubbleSeries = chart.SeriesCollection().NewSeries();
+            dummyBubbleSeries.XValues = zeroArray;
+            dummyBubbleSeries.Values = zeroArray;
+            dummyBubbleSeries.BubbleSizes = bubbleSizes;
+
+            var bubbleWidths = new List<float>();
+
+            foreach (Excel.Point bubble in dummyBubbleSeries.Points())
+            {
+                bubbleWidths.Add((float) bubble.Width);
+            }
+
+            var bubbleLegendNeededSpace = bubbleWidths.Max() + BubbleLegendTop;
+
+            chart.PlotArea.Height -= bubbleLegendNeededSpace;
+
+            float currentLeft = BubbleLegendLeft + RevenueTitleLength;
+
+            for (var i = 0; i < bubbleWidths.Count; i++)
+            {
+                var bubbleWidth = bubbleWidths[i];
+
+                var topMargin = (float) chart.PlotArea.Height + BubbleLegendTop + bubbleWidths.Max() / 2 - bubbleWidth / 2;
+
+                var oval = chart.Shapes.AddShape(MsoAutoShapeType.msoShapeOval,
+                    currentLeft,
+                    topMargin,
+                    bubbleWidth,
+                    bubbleWidth);
+                oval.Fill.ForeColor.RGB = (int)Excel.XlRgbColor.rgbWhite;
+                oval.Line.ForeColor.RGB = (int)Excel.XlRgbColor.rgbBlack;
+
+                var label = chart.Shapes.AddLabel(MsoTextOrientation.msoTextOrientationHorizontal,
+                    currentLeft + bubbleWidth + BubbleLegendLabelMargin,
+                    topMargin + bubbleWidth / 2 - RevenueTextLabelHeight / 2,
+                    RevenueTextLabelLength,
+                    RevenueTextLabelHeight);
+
+                var revenueText = string.Empty;
+                if (i == 0)
+                {
+                    revenueText = "<" + revenues[i];
+                }
+                else if (i == revenues.Length - 1)
+                {
+                    revenueText = ">" + revenues[i-1];
+                }
+                else
+                {
+                    revenueText = revenues[i - 1] + "-" + revenues[i];
+                }
+
+                label.TextFrame.Characters().Text = revenueText;
+
+                currentLeft += bubbleWidth + RevenueTextLabelLength + BubbleLegendLabelMargin*2;
+            }
+
+            var revenueLabel = chart.Shapes.AddLabel(MsoTextOrientation.msoTextOrientationHorizontal,
+                BubbleLegendLeft,
+                BubbleLegendTop + bubbleWidths.Max() / 2 + (float) chart.PlotArea.Height - RevenueTextLabelHeight / 2,
+                RevenueTitleLength,
+                RevenueTextLabelHeight);
+            revenueLabel.TextFrame.Characters().Text = "Omsättning kkr:";
+
+            dummyBubbleSeries.Delete();
         }
 
         private static double Clamp(double x, double min, double max)
