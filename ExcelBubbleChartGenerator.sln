@@ -5,7 +5,7 @@ VisualStudioVersion = 15.0.27130.2026
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExcelBubbleChartGenerator", "ExcelBubbleChartGenerator\ExcelBubbleChartGenerator.csproj", "{FA9DB1CD-ACE3-43A2-936B-B7518C56A9C4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChartGeneratorUI", "ChartGeneratorUI\ChartGeneratorUI.csproj", "{007BBC72-CEBF-43BF-9F18-4D3EF600E10B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BubbleChartMaker", "ChartGeneratorUI\BubbleChartMaker.csproj", "{007BBC72-CEBF-43BF-9F18-4D3EF600E10B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -13,6 +13,7 @@ namespace ChartGeneratorUI
         private const double DefaultChartWidth = 1200;
         private const double DefaultChartHeight = 700;
         private const int WorksheetToFetchFrom = 2;
+        private const int MaxStage = 6;
 
         public double MinChartWidth { get; } = 1;
         public double MinChartHeight { get; } = 1;
@@ -22,6 +23,9 @@ namespace ChartGeneratorUI
         private string _statusMessage;
         private double _chartWidth = DefaultChartWidth;
         private double _chartHeight = DefaultChartHeight;
+        private double _stageFraction;
+
+        private ExcelBubbleChartGenerator.ExcelBubbleChartGenerator _excelBubbleChartGenerator;
 
         public ICommand GenerateBubbleChartCommand { get; set; }
 
@@ -57,10 +61,22 @@ namespace ChartGeneratorUI
             set => Set(ref _chartHeight, Math.Max(value, MinChartHeight));
         }
 
+        public double StageFraction
+        {
+            get => _stageFraction;
+            set => Set(ref _stageFraction, value);
+        }
+
         public MainWindowViewModel()
         {
             GenerateBubbleChartCommand = new RelayCommand(GenerateChart, IsAppEnabled);
             SelectSourceFileCommand = new RelayCommand(SelectSourceFile, IsAppEnabled);
+            _excelBubbleChartGenerator = new ExcelBubbleChartGenerator.ExcelBubbleChartGenerator();
+            _excelBubbleChartGenerator.StatusUpdated += (sender, args) =>
+            {
+                StatusMessage = args.StatusMessage;
+                StageFraction = (double) args.Stage / MaxStage;
+            };
         }
 
         public void SelectSourceFile()
@@ -99,7 +115,7 @@ namespace ChartGeneratorUI
             StatusMessage = "Arbetar";
             try
             {
-                await Task.Run(() => ExcelBubbleChartGenerator.ExcelBubbleChartGenerator.GenerateBubbleChart(
+                await Task.Run(() => _excelBubbleChartGenerator.GenerateBubbleChart(
                     ChartWidth,
                     ChartHeight,
                     GetChartScaleFactor(),
