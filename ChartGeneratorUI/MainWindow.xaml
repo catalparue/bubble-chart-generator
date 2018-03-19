@@ -7,7 +7,7 @@
         xmlns:numeric="http://gu.se/NumericInput"
         mc:Ignorable="d"
         Title="Bubble Chart Maker"
-        Height="425" MinHeight="425"
+        Height="475" MinHeight="475"
         Width="525" MinWidth="525"
         ResizeMode="CanResize">
     <Window.DataContext>
@@ -61,6 +61,7 @@
             <RowDefinition/>
             <RowDefinition/>
             <RowDefinition/>
+            <RowDefinition/>
         </Grid.RowDefinitions>
 
         <!-- Title -->
@@ -71,17 +72,8 @@
             Välkommen till bubbeldiagram-skaparen! Skicka in fakturasammandraget som Excel-fil, så skapas ett automatiskt bubbeldiagram.
         </TextBlock>
 
-        <!--Data input-->
-        <Grid Grid.Row="2">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                <TextBlock>Läs in data från Excel-fil:</TextBlock>
-                <TextBox Height="20" Width="150" Margin="5, 0, 0, 0" Text="{Binding SourceFilePath}" IsEnabled="{Binding IsAppEnabled}"/>
-                <Button Height="20" Width="50" Command="{Binding SelectSourceFileCommand}" IsEnabled="{Binding IsAppEnabled}">Välj fil...</Button>
-            </StackPanel>
-        </Grid>
-
         <!--Width and height inputs-->
-        <Grid Grid.Row="3">
+        <Grid Grid.Row="2">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -105,20 +97,39 @@
             </Grid>
         </Grid>
 
-        <!--Create chart button-->
-        <Grid Grid.Row="4">
-            <Button Height="20" Width="100" Command="{Binding GenerateBubbleChartCommand}" IsEnabled="{Binding IsAppEnabled}">Skapa diagram...</Button>
+        <!--Select input-->
+        <Grid Grid.Row="3" Width="350">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <TextBlock>Läs in data från Excel-fil:</TextBlock>
+                <TextBox Height="20" Width="150" Margin="5, 0, 0, 0" Text="{Binding SourceFilePath}" IsEnabled="{Binding IsAppEnabled}"/>
+                <Button Height="20" Width="50" Command="{Binding SelectSourceFileCommand}" IsEnabled="{Binding IsAppEnabled}">Välj fil...</Button>
+            </StackPanel>
         </Grid>
-        
-        <!--Progress bar-->
+
+        <!--Select output-->
+        <Grid Grid.Row="4" Width="350">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <TextBlock>Spara diagrammet till:</TextBlock>
+                <TextBox Height="20" Width="150" Margin="5, 0, 0, 0" Text="{Binding DestinationFilePath}" IsEnabled="{Binding IsAppEnabled}"/>
+                <Button Height="20" Width="50" Command="{Binding SelectDestinationFileCommand}" IsEnabled="{Binding IsAppEnabled}">Välj fil...</Button>
+            </StackPanel>
+        </Grid>
+
         <Grid Grid.Row="5">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                <Button Height="20" Width="90" Command="{Binding GenerateBubbleChartCommand}" IsEnabled="{Binding IsAppEnabled}">Skapa diagram</Button>
+            </StackPanel>
+        </Grid>
+
+        <!--Progress bar-->
+        <Grid Grid.Row="6">
             <Border Style="{StaticResource ProgressBar}" BorderBrush="Black" BorderThickness="1" Height="15" Width="475">
                 <Rectangle Fill="LimeGreen" HorizontalAlignment="Left" Width ="{Binding StageFraction, Converter={StaticResource MultiplicationConverter}, ConverterParameter=475}"/>
             </Border>
         </Grid>
 
         <!--Status message-->
-        <StackPanel Grid.Row="6" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center">
+        <StackPanel Grid.Row="7" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center">
             <TextBlock Text="{Binding StatusMessage}" FontSize="20"/>
             <TextBlock Style="{StaticResource AnimatedEllipsis}" FontSize="20" Width="30">
                 <TextBlock.Triggers>

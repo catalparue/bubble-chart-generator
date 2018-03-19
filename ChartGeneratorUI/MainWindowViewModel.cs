@@ -20,16 +20,17 @@ namespace ChartGeneratorUI
 
         private bool _isAppEnabled = true;
         private string _sourceFilePath;
+        private string _destinationFilePath;
         private string _statusMessage;
         private double _chartWidth = DefaultChartWidth;
         private double _chartHeight = DefaultChartHeight;
         private double _stageFraction;
 
-        private ExcelBubbleChartGenerator.ExcelBubbleChartGenerator _excelBubbleChartGenerator;
+        private readonly ExcelBubbleChartGenerator.ExcelBubbleChartGenerator _excelBubbleChartGenerator;
 
         public ICommand GenerateBubbleChartCommand { get; set; }
-
         public ICommand SelectSourceFileCommand { get; set; }
+        public ICommand SelectDestinationFileCommand { get; set; }
 
         public bool IsAppEnabled
         {
@@ -41,6 +42,12 @@ namespace ChartGeneratorUI
         {
             get => _sourceFilePath;
             set => Set(ref _sourceFilePath, value);
+        }
+
+        public string DestinationFilePath
+        {
+            get => _destinationFilePath;
+            set => Set(ref _destinationFilePath, value);
         }
 
         public string StatusMessage
@@ -71,6 +78,7 @@ namespace ChartGeneratorUI
         {
             GenerateBubbleChartCommand = new RelayCommand(GenerateChart, IsAppEnabled);
             SelectSourceFileCommand = new RelayCommand(SelectSourceFile, IsAppEnabled);
+            SelectDestinationFileCommand = new RelayCommand(SelectDestinationFile, IsAppEnabled);
             _excelBubbleChartGenerator = new ExcelBubbleChartGenerator.ExcelBubbleChartGenerator();
             _excelBubbleChartGenerator.StatusUpdated += (sender, args) =>
             {
@@ -91,6 +99,20 @@ namespace ChartGeneratorUI
             if (openFileDialog.ShowDialog() == true) SourceFilePath = openFileDialog.FileName;
         }
 
+        public void SelectDestinationFile()
+        {
+            var saveFileDialog = new SaveFileDialog
+            {
+                OverwritePrompt = true,
+                FileName = "bubblechart.png",
+                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
+                Filter = "PNG files (*.png)|*.png",
+                RestoreDirectory = true
+            };
+
+            if (saveFileDialog.ShowDialog() == true) DestinationFilePath = saveFileDialog.FileName;
+        }
+
         public async void GenerateChart()
         {
             if (!File.Exists(SourceFilePath))
@@ -99,17 +121,17 @@ namespace ChartGeneratorUI
                 return;
             }
 
-            StatusMessage = string.Empty;
-
-            var saveFileDialog = new SaveFileDialog
+            if (!Directory.Exists(Path.GetDirectoryName(DestinationFilePath)))
             {
-                OverwritePrompt = true,
-                FileName = "bubblechart.png",
-                Filter = "PNG files (*.png)|*.png|All files (*.*)|*.*",
-                RestoreDirectory = true
-            };
+                StatusMessage = "Kan inte spara diagrammet till vald plats!";
+                return;
+            }
 
-            if (saveFileDialog.ShowDialog() != true) return;
+            if (Path.GetExtension(DestinationFilePath)?.ToLower() != ".png")
+            {
+                StatusMessage = "Diagrammet måste sparas som PNG-fil!";
+                return;
+            }
 
             IsAppEnabled = false;
             StatusMessage = "Arbetar";
@@ -120,9 +142,9 @@ namespace ChartGeneratorUI
                     ChartHeight,
                     GetChartScaleFactor(),
                     SourceFilePath,
-                    saveFileDialog.FileName,
+                    DestinationFilePath,
                     WorksheetToFetchFrom));
-                StatusMessage = "Bilden har sparats till:\n" + saveFileDialog.FileName;
+                StatusMessage = "Bilden har sparats till:\n" + DestinationFilePath;
             }
             catch (Exception exception)
             {
