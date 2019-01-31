@@ -104,9 +104,9 @@ namespace ChartGeneratorUI
             var saveFileDialog = new SaveFileDialog
             {
                 OverwritePrompt = true,
-                FileName = "bubblechart.png",
-                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
-                Filter = "PNG files (*.png)|*.png",
+                FileName = "bubblechart.xlsx",
+                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                Filter = "Excel files (*.xls, *.xlsx)|*.xls;*.xlsx",
                 RestoreDirectory = true
             };
 
@@ -127,9 +127,10 @@ namespace ChartGeneratorUI
                 return;
             }
 
-            if (Path.GetExtension(DestinationFilePath)?.ToLower() != ".png")
+            var fileExtension = Path.GetExtension(DestinationFilePath)?.ToLower();
+            if (fileExtension != ".xls" && fileExtension != ".xlsx")
             {
-                StatusMessage = "Diagrammet måste sparas som PNG-fil!";
+                StatusMessage = "Diagrammet måste sparas som Excel-fil!";
                 return;
             }
 

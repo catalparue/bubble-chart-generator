@@ -83,8 +83,8 @@ namespace ExcelBubbleChartGenerator
                 AddLegendAndClearDummySeriesNames(bubbleChart);
                 SetStatus("Beräknar placering av textrutor", 4);
                 SpreadOutDataLabels(bubbleChart);
-                SetStatus("Exporterar bild", 5);
-                bubbleChart.Export(outputFilePath, "PNG");
+                SetStatus("Sparar", 5);
+                excelWorkbook.SaveAs(Filename: outputFilePath);
                 Process.Start(outputFilePath);
 
                 SetStatus("Success!", 6);
