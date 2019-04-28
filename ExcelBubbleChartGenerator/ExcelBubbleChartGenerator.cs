@@ -29,9 +29,9 @@ namespace ExcelBubbleChartGenerator
 
         private readonly Dictionary<int, string> _projectTypeNames = new Dictionary<int, string>
         {
-            {1, "Lösning/projekt"},
-            {2, "Konsulttjänst"},
-            {3, "Indirekt"}
+            {1, "Project"},
+            {2, "Consulting Service"},
+            {3, "Indirectly"}
         };
 
         private readonly Dictionary<int, int> _projectTypeColors = new Dictionary<int, int>
@@ -75,15 +75,15 @@ namespace ExcelBubbleChartGenerator
 
                 sourceDataWorkbook = excelApp.Workbooks.Open(dataFilePath);
 
-                SetStatus("Skapar nytt diagram", 1);
+                SetStatus("Creates new chart", 1);
                 var bubbleChart = CreateNewBubbleChart(excelWorksheet, chartWidth, chartHeight, bubbleScaleFactor);
-                SetStatus("Ritar ut datapunkter", 2);
+                SetStatus("Draws out data points", 2);
                 AddDataPoints(bubbleChart, sourceDataWorkbook.Sheets[worksheetToOpen]);
-                SetStatus("Lägger till diagramförklaring", 3);
+                SetStatus("Adds chart explanation", 3);
                 AddLegendAndClearDummySeriesNames(bubbleChart);
-                SetStatus("Beräknar placering av textrutor", 4);
+                SetStatus("Calculates text box placement", 4);
                 SpreadOutDataLabels(bubbleChart);
-                SetStatus("Sparar", 5);
+                SetStatus("saves", 5);
                 excelWorkbook.SaveAs(Filename: outputFilePath);
                 Process.Start(outputFilePath);
 
@@ -103,6 +103,8 @@ namespace ExcelBubbleChartGenerator
                     sourceDataWorkbook.Close();
                 }
 
+
+                //CC Release COM Object
                 excelApp?.Quit();
                 if (excelWorksheet != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(excelWorksheet);
                 if (excelWorkbook != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(excelWorkbook);
@@ -129,7 +131,7 @@ namespace ExcelBubbleChartGenerator
 
             var xAxis = (Excel.Axis) bubbleChart.Axes(Excel.XlAxisType.xlCategory);
             xAxis.HasTitle = true;
-            xAxis.AxisTitle.Caption = "Medeltimpris";
+            xAxis.AxisTitle.Caption = "average Hourly";
             xAxis.HasMajorGridlines = true;
             xAxis.MajorGridlines.Format.Line.ForeColor.RGB = (int)Excel.XlRgbColor.rgbGainsboro;
 
@@ -169,7 +171,7 @@ namespace ExcelBubbleChartGenerator
                 var bubbleSize = GetBubbleSizeFromRevenue(revenue);
 
                 series.Format.Fill.ForeColor.RGB = _projectTypeColors[projectTypeId];
-
+                
                 series.XValues = new[] { xValue };
                 series.Values = new[] { yValue };
                 series.BubbleSizes = new[] { bubbleSize };
@@ -309,8 +311,8 @@ namespace ExcelBubbleChartGenerator
         private bool IsValidProjectType(string projectType)
         {
             if (string.IsNullOrEmpty(projectType)) return false;
-            return projectType.ToLower() == "lösning" || projectType.ToLower() == "resurs" ||
-                   projectType.ToLower() == "indirekt";
+            return projectType.ToLower() == "project" || projectType.ToLower() == "resurs" ||
+                   projectType.ToLower() == "indirectly";
         }
 
         private int GetProjectTypeIdFromProjectTypeString(string projectTypeString)
@@ -318,11 +320,11 @@ namespace ExcelBubbleChartGenerator
             switch (projectTypeString?.ToLower())
             {
                 default:
-                case "lösning":
+                case "project":
                     return 1;
                 case "resurs":
                     return 2;
-                case "indirekt":
+                case "indirectly":
                     return 3;
             }
         }
@@ -569,7 +571,7 @@ namespace ExcelBubbleChartGenerator
         {
             var revenues = new double[] {200, 400, 600, 800, 1000};
             const double revenueIncrement = 200;
-            var zeroArray = revenues.Select(x => 0.0).ToArray();
+            var zeroArray = revenues.Select(x => x).ToArray();
             var bubbleSizes = revenues.Select(x => GetBubbleSizeFromRevenue(x - revenueIncrement / 2)).ToArray();
 
             Excel.Series dummyBubbleSeries = chart.SeriesCollection().NewSeries();
@@ -634,7 +636,7 @@ namespace ExcelBubbleChartGenerator
                 BubbleLegendTop + bubbleWidths.Max() / 2 + (float) chart.PlotArea.Height - RevenueTextLabelHeight / 2,
                 RevenueTitleLength,
                 RevenueTextLabelHeight);
-            revenueLabel.TextFrame.Characters().Text = "Omsättning kkr:";
+            revenueLabel.TextFrame.Characters().Text = "Turnover kkr:";
 
             dummyBubbleSeries.Delete();
         }

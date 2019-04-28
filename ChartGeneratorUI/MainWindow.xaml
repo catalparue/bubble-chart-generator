@@ -69,7 +69,7 @@
 
         <!-- Description -->
         <TextBlock Grid.Row="1" Width="300" TextWrapping="WrapWithOverflow" TextAlignment="Center">
-            Välkommen till bubbeldiagram-skaparen! Skicka in fakturasammandraget som Excel-fil, så skapas ett automatiskt bubbeldiagram.
+            Welcome to the bubble chart creator! Submit the invoice summary as an Excel file, and an automatic bubble chart is created.
         </TextBlock>
 
         <!--Width and height inputs-->
@@ -79,7 +79,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition/>
                 </Grid.RowDefinitions>
-                <TextBlock>Önskade dimensioner (rekommenderat 1200 x 700):</TextBlock>
+                <TextBlock>Desired dimensions (rekommenderat 1200 x 700):</TextBlock>
                 <Grid Grid.Row="1">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition/>
@@ -89,35 +89,36 @@
                         <RowDefinition/>
                         <RowDefinition/>
                     </Grid.RowDefinitions>
-                    <TextBlock HorizontalAlignment="Right" Grid.Row="0" Grid.Column="0" Margin="0, 0, 5, 0">Bildbredd:</TextBlock>
+                    <TextBlock HorizontalAlignment="Right" Grid.Row="0" Grid.Column="0" Margin="0, 0, 5, 0">bild Width:</TextBlock>
                     <numeric:IntBox HorizontalAlignment="Left" Grid.Row="0" Grid.Column="1" Value="{Binding ChartWidth}" MinValue="{Binding MinChartWidth}"/>
-                    <TextBlock HorizontalAlignment="Right" Grid.Row="1" Grid.Column="0" Margin="0, 0, 5, 0">Bildhöjd:</TextBlock>
+                    <TextBlock HorizontalAlignment="Right" Grid.Row="1" Grid.Column="0" Margin="0, 0, 5, 0">Image Height:</TextBlock>
                     <numeric:IntBox HorizontalAlignment="Left" Grid.Row="1" Grid.Column="1" Value="{Binding ChartHeight}" MinValue="{Binding MinChartHeight}"/>
                 </Grid>
             </Grid>
         </Grid>
 
         <!--Select input-->
-        <Grid Grid.Row="3" Width="350">
+        <Grid Grid.Row="3" Width="400">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <TextBlock>Läs in data från Excel-fil:</TextBlock>
-                <TextBox Height="20" Width="150" Margin="5, 0, 0, 0" Text="{Binding SourceFilePath}" IsEnabled="{Binding IsAppEnabled}"/>
-                <Button Height="20" Width="50" Command="{Binding SelectSourceFileCommand}" IsEnabled="{Binding IsAppEnabled}">Välj fil...</Button>
+                <TextBlock>Load data from Excel file:</TextBlock>
+                <TextBox Height="20" Width="80" Margin="5, 0, 0, 0" Text="{Binding SourceFilePath}" IsEnabled="{Binding IsAppEnabled}"/>
+                <Button Height="20" Width="80" Command="{Binding SelectSourceFileCommand}" IsEnabled="{Binding IsAppEnabled}">Choose File</Button>
             </StackPanel>
         </Grid>
 
         <!--Select output-->
-        <Grid Grid.Row="4" Width="350">
+        <Grid Grid.Row="4" Width="400">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <TextBlock>Spara diagrammet till:</TextBlock>
-                <TextBox Height="20" Width="150" Margin="5, 0, 0, 0" Text="{Binding DestinationFilePath}" IsEnabled="{Binding IsAppEnabled}"/>
-                <Button Height="20" Width="50" Command="{Binding SelectDestinationFileCommand}" IsEnabled="{Binding IsAppEnabled}">Välj fil...</Button>
+                <TextBlock>Save the chart to:</TextBlock>
+                <TextBox Height="20" Width="80" Margin="5, 0, 0, 0" Text="{Binding DestinationFilePath}" IsEnabled="{Binding IsAppEnabled}"/>
+                <Button Height="20" Width="80" Command="{Binding SelectDestinationFileCommand}" IsEnabled="{Binding IsAppEnabled}">Choose File</Button>
             </StackPanel>
         </Grid>
 
         <Grid Grid.Row="5">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                <Button Height="20" Width="90" Command="{Binding GenerateBubbleChartCommand}" IsEnabled="{Binding IsAppEnabled}">Skapa diagram</Button>
+                <Button Height="20" Width="90" Command="{Binding GenerateBubbleChartCommand}" IsEnabled="{Binding IsAppEnabled}">Create charts
+                </Button>
             </StackPanel>
         </Grid>
 
